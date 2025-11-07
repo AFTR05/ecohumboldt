@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "456847646187",
+    "project_id": "eco-humboldt-go",
+    "storage_bucket": "eco-humboldt-go.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:456847646187:android:06885546f3d8c30b620dae",
+        "android_client_info": {
+          "package_name": "com.example.eco_humboldt_go"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBs64aw13bZbAiXwANJFDGSESfgIJUJYUc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

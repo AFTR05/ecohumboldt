@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
+import '../../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -13,7 +13,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _idController = TextEditingController();
+
   bool _isLoading = false;
+
+  bool _isValidInstitutionalEmail(String email) {
+    return email.endsWith('@cue.edu.co') ||
+        email.endsWith('@unihumboldt.edu.co');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +50,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      Image.asset('assets/images/logo.png', height: size.width < 600 ? 90 : 120),
+                      Image.asset('assets/images/logo.png',
+                          height: size.width < 600 ? 90 : 120),
+
                       const SizedBox(height: 10),
                       const Text(
                         "Registro Eco-Humboldt GO",
@@ -52,47 +61,66 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF2E7D32)),
                       ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        "Únete al cambio ambiental 🌎",
-                        style: TextStyle(color: Colors.black54),
-                      ),
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 20),
+
+                      // NOMBRE
                       TextField(
                         controller: _nameController,
                         decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.person_outline,
-                              color: Colors.green),
                           labelText: 'Nombre completo',
+                          prefixIcon:
+                              const Icon(Icons.person_outline, color: Colors.green),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
+
                       const SizedBox(height: 15),
+
+                      // IDENTIFICACIÓN
+                      TextField(
+                        controller: _idController,
+                        decoration: InputDecoration(
+                          labelText: 'Número de identificación',
+                          prefixIcon: const Icon(Icons.badge, color: Colors.green),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      // EMAIL
                       TextField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.email_outlined,
-                              color: Colors.green),
                           labelText: 'Correo institucional',
+                          prefixIcon:
+                              const Icon(Icons.email_outlined, color: Colors.green),
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
+
                       const SizedBox(height: 15),
+
+                      // PASSWORD
                       TextField(
                         controller: _passwordController,
                         obscureText: true,
                         decoration: InputDecoration(
+                          labelText: 'Contraseña',
                           prefixIcon:
                               const Icon(Icons.lock_outline, color: Colors.green),
-                          labelText: 'Contraseña',
                           border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
+
                       const SizedBox(height: 25),
 
+                      // BOTÓN REGISTRO
                       _isLoading
                           ? const CircularProgressIndicator()
                           : ElevatedButton.icon(
@@ -105,17 +133,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     borderRadius: BorderRadius.circular(12)),
                               ),
                               onPressed: () async {
+                                final email = _emailController.text.trim();
+
+                                // VALIDAR EMAIL INSTITUCIONAL
+                                if (!_isValidInstitutionalEmail(email)) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Correo inválido. Debe ser @cue.edu.co o @unihumboldt.edu.co'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
+
                                 setState(() => _isLoading = true);
+
                                 try {
                                   await authService.registerUser(
-                                    _emailController.text.trim(),
+                                    email,
                                     _passwordController.text.trim(),
+                                    _nameController.text.trim(),
+                                    _idController.text.trim(),
                                   );
+
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text(
-                                            'Usuario registrado con éxito 🎉'),
+                                        content: Text('Usuario registrado con éxito 🎉'),
                                         backgroundColor: Colors.green,
                                       ),
                                     );
@@ -129,6 +174,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ),
                                   );
                                 }
+
                                 setState(() => _isLoading = false);
                               },
                               label: const Text('Registrarme'),

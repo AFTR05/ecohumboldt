@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class ImageAIValidator {
-  static const String _apiKey = "AIzaSyBgecK_54kNgnTlMZUfc3afi8_Ttly4GBM";
+  static const String _apiKey = "AIzaSyAk4OVB2SmoJBo4REK2BfRKoYSJ8MHlAxQ";
 
   Future<bool> validateImageFlexible({
     required Uint8List imageBytes,
@@ -45,8 +45,6 @@ class ImageAIValidator {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(payload),
       );
-
-      print("RAW RESPONSE: ${response.body}");
 
       final data = jsonDecode(response.body);
 

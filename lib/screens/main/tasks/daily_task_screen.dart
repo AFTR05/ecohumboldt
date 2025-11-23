@@ -50,7 +50,7 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
     Navigator.of(context, rootNavigator: true).pop();
   }
 
-  // ---- Nice SweetAlert-like dialog ----
+  // ---- Result Dialog ----
   Future<void> _showResultDialog(
     BuildContext context, {
     required bool success,
@@ -67,7 +67,12 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
               color: success ? Colors.green : Colors.red,
             ),
             const SizedBox(width: 10),
-            Text(success ? "Validación correcta" : "Validación fallida"),
+            Text(
+              success ? "Validación correcta" : "Validación fallida",
+              softWrap: true,
+              overflow: TextOverflow.visible,
+              maxLines: null,
+            ),
           ],
         ),
         content: Text(
@@ -75,7 +80,9 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
               (success
                   ? "La imagen coincide con el reto 🎉"
                   : "La foto no contiene el objeto esperado para este reto."),
-          style: const TextStyle(fontSize: 16),
+          softWrap: true,
+          overflow: TextOverflow.visible,
+          maxLines: null,
         ),
         actions: [
           TextButton(
@@ -87,7 +94,7 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
     );
   }
 
-  // ---- CAMERA VALIDATION WEB ----
+  // ---- CAMERA (WEB) ----
   Future<bool> _validateWithWebcam(BuildContext context) async {
     final result = await Navigator.push(
       context,
@@ -101,31 +108,15 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
     return false;
   }
 
-  // ---- MOBILE version (mock for now) ----
+  // ---- MOBILE MOCK ----
   Future<bool> _validateWithMobile() async {
     return false;
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final isMobile = size.width < 600;
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F3),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: const Color(0xFF2E7D32),
-        centerTitle: true,
-        title: const Text(
-          "Retos Diarios",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1,
-            color: Colors.white,
-          ),
-        ),
-      ),
+      backgroundColor: const Color(0xFFF3F5ED),
 
       body: StreamBuilder(
         stream: FirebaseFirestore.instance
@@ -153,7 +144,7 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
                   final task = tasks[index];
                   final isCompleted = completedToday.contains(task.id);
 
-                  return _taskCard(task, isCompleted, isMobile);
+                  return _taskCard(task, isCompleted);
                 },
               );
             },
@@ -163,87 +154,146 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
     );
   }
 
-  // ---- Task Card ----
-  Widget _taskCard(DailyTask task, bool isCompleted, bool isMobile) {
+  // --------------------------------------------------------
+  // CARD REDISEÑADA — estilo eco profesional
+  // --------------------------------------------------------
+
+  Widget _taskCard(DailyTask task, bool isCompleted) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(
-                  radius: isMobile ? 22 : 28,
-                  backgroundColor:
-                      isCompleted ? Colors.green.shade300 : Colors.green.shade600,
-                  child: const Icon(Icons.eco_rounded, color: Colors.white),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ---- Header con icono y titulo ----
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: (isCompleted
+                          ? Colors.green.shade300
+                          : Colors.green.shade600)
+                      .withOpacity(0.85),
                 ),
-                const SizedBox(width: 12),
+                child: const Icon(Icons.eco, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 12),
 
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        task.title,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
-                        ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.title,
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
+                      maxLines: null,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2E4631),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        task.description,
-                        softWrap: true,
-                        overflow: TextOverflow.visible,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.3,
-                          color: Colors.grey.shade800,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      task.description,
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
+                      maxLines: null,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.4,
+                        color: Colors.grey.shade700,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
 
-            const SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _badge(Icons.star, "+${task.points} pts",
-                    const Color(0xFF2E7D32), const Color(0xFF66BB6A)),
-                _badge(Icons.water_drop, "${task.grams} g evitados",
-                    Colors.teal, Colors.tealAccent),
-              ],
-            ),
+          // ---- Badges (puntos y gramos) ----
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _badge(
+                icon: Icons.star,
+                text: "+${task.points} pts",
+                color: const Color(0xFF4CAF50),
+              ),
+              _badge(
+                icon: Icons.water_drop,
+                text: "${task.grams} g evitados",
+                color: const Color(0xFF009688),
+              ),
+            ],
+          ),
 
-            const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
-            _validateButton(task, isCompleted),
-          ],
-        ),
+          // ---- Botón de validar ----
+          _validateButton(task, isCompleted),
+        ],
       ),
     );
   }
 
-  // ---- Validate Button ----
+  // --------------------------------------------------------
+  // BADGE REDISEÑADO
+  // --------------------------------------------------------
+
+  Widget _badge({
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            softWrap: true,
+            overflow: TextOverflow.visible,
+            maxLines: null,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --------------------------------------------------------
+  // BOTÓN VALIDAR
+  // --------------------------------------------------------
+
   Widget _validateButton(DailyTask task, bool isCompleted) {
     return SizedBox(
       width: double.infinity,
@@ -253,7 +303,7 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
             : () async {
                 final isWeb = identical(0, 0.0);
 
-                // --- 1. Open Camera ---
+                // 1. Open Camera
                 final validImage = isWeb
                     ? await _validateWithWebcam(context)
                     : await _validateWithMobile();
@@ -264,10 +314,10 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
                   return;
                 }
 
-                // --- 2. Loading IA ---
+                // 2. Loading
                 _showLoading(context);
 
-                // --- 3. Validate IA ---
+                // 3. IA Validation
                 final aiResult =
                     await ImageAIValidator().validateImageFlexible(
                   imageBytes: lastCapturedBytes!,
@@ -275,10 +325,8 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
                       task.expectedObject ?? task.title.toLowerCase(),
                 );
 
-                // --- 4. Hide Loader ---
                 _hideLoading(context);
 
-                // --- 5. Result ---
                 if (!aiResult) {
                   _showResultDialog(context,
                       success: false,
@@ -287,7 +335,7 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
                   return;
                 }
 
-                // --- 6. Complete Task ---
+                // 4. Complete task
                 final ok = await taskService.completeTask(uid: uid, task: task);
 
                 _showResultDialog(
@@ -302,43 +350,22 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
           backgroundColor:
               isCompleted ? Colors.grey.shade400 : const Color(0xFF2E7D32),
           foregroundColor: Colors.white,
+          elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
         child: Text(
           isCompleted ? "Completado ✓" : "Validar con foto",
+          softWrap: true,
+          overflow: TextOverflow.visible,
+          maxLines: null,
           style: const TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w800,
           ),
         ),
-      ),
-    );
-  }
-
-  // ---- Badge ----
-  Widget _badge(IconData icon, String text, Color c1, Color c2) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(colors: [c1, c2]),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 18),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-        ],
       ),
     );
   }

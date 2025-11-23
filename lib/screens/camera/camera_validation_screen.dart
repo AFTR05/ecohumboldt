@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class WebcamCaptureWeb extends StatefulWidget {
@@ -15,7 +14,7 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
   List<CameraDescription> _cameras = [];
   Uint8List? _imageBytes;
   bool _isInitialized = false;
-  int _currentCameraIndex = 0; // 🔥 aquí guardamos cuál cámara está activa
+  int _currentCameraIndex = 0;
 
   @override
   void initState() {
@@ -26,12 +25,7 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
   Future<void> _loadCameras() async {
     try {
       _cameras = await availableCameras();
-
-      if (_cameras.isEmpty) {
-        debugPrint("No se encontraron cámaras");
-        return;
-      }
-
+      if (_cameras.isEmpty) return;
       await _initCamera(_currentCameraIndex);
     } catch (e) {
       debugPrint("ERROR AL CARGAR CÁMARAS: $e");
@@ -49,18 +43,16 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
       await _controller!.initialize();
 
       if (!mounted) return;
-
       setState(() {
         _isInitialized = true;
         _currentCameraIndex = index;
-        _imageBytes = null; // Reiniciar foto si cambia de cámara
+        _imageBytes = null;
       });
     } catch (e) {
       debugPrint("ERROR AL INICIAR CÁMARA: $e");
     }
   }
 
-  // 🔄 Cambiar cámara
   Future<void> _switchCamera() async {
     if (_cameras.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -93,51 +85,51 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
     final isCaptured = _imageBytes != null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F4),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: const Color(0xFF2E7D32),
-        centerTitle: true,
-        title: const Text(
-          "Validar Reto",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          // 🔁 BOTÓN PARA CAMBIAR CÁMARA
-          IconButton(
-            icon: const Icon(Icons.cameraswitch_rounded, size: 30),
-            onPressed: _switchCamera,
-          ),
-          const SizedBox(width: 10),
-        ],
-      ),
+      backgroundColor: const Color(0xFFF3F5ED),
 
       body: Center(
         child: Column(
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: 26),
 
-            // CAMERA BOX
+            // -------- TITULO / GUIA --------
+            Text(
+              "Validación del reto",
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Colors.green.shade800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Captura el objeto solicitado para confirmar tu reto",
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade700,
+              ),
+            ),
+
+            const SizedBox(height: 26),
+
+            // -------- CAMERA BOX --------
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               width: 360,
               height: 360,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(22),
+                color: Colors.white,
                 border: Border.all(
-                  width: 5,
-                  color:
-                      isCaptured ? Colors.green.shade600 : Colors.green.shade300,
+                  width: 4,
+                  color: isCaptured
+                      ? Colors.green.shade600
+                      : const Color(0xFFB7D6B1),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.25),
-                    blurRadius: 18,
-                    spreadRadius: 1,
+                    color: Colors.black.withOpacity(0.07),
+                    blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
                 ],
@@ -149,15 +141,15 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
                       ? Image.memory(_imageBytes!, fit: BoxFit.cover)
                       : Stack(
                           children: [
-                            Positioned.fill(
-                                child: CameraPreview(_controller!)),
+                            Positioned.fill(child: CameraPreview(_controller!)),
+                            // sombreado sutil
                             Positioned.fill(
                               child: Container(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
                                       Colors.transparent,
-                                      Colors.black.withOpacity(0.15),
+                                      Colors.black.withOpacity(0.12),
                                     ],
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
@@ -169,39 +161,46 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
                         ),
             ),
 
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
+            // -------- TEXTO DE ESTADO --------
             AnimatedOpacity(
               duration: const Duration(milliseconds: 300),
               opacity: 1,
               child: Text(
                 isCaptured
-                    ? "Foto capturada correctamente 📸"
-                    : "Asegúrate de enfocar bien el objeto 🌿",
+                    ? "Foto capturada correctamente 🌿"
+                    : "Asegúrate de enfocar el objeto solicitado 📸",
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: isCaptured ? Colors.green.shade800 : Colors.black54,
+                  color: isCaptured ? Colors.green.shade700 : Colors.grey.shade600,
                 ),
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 32),
 
+            // -------- BOTONES --------
             if (!isCaptured)
-              _buttonPrimary("Tomar foto", Icons.camera_alt_rounded, _takePicture)
+              Column(
+                children: [
+                  _buttonPrimary("Tomar foto", Icons.camera_alt_rounded, _takePicture),
+                  const SizedBox(height: 12),
+                  _buttonSecondary("Cambiar cámara", Icons.cameraswitch, _switchCamera),
+                ],
+              )
             else
               Column(
                 children: [
                   _buttonPrimary(
-                      "Validar reto ✓", Icons.check_circle, () {
-                        Navigator.pop(context, _imageBytes);
-                      }),
-                  const SizedBox(height: 14),
-                  _buttonSecondary(
-                      "Reintentar", Icons.refresh_rounded, () {
-                        setState(() => _imageBytes = null);
-                      }),
+                      "Validar reto", Icons.check_circle_rounded, () {
+                    Navigator.pop(context, _imageBytes);
+                  }),
+                  const SizedBox(height: 12),
+                  _buttonSecondary("Reintentar", Icons.refresh, () {
+                    setState(() => _imageBytes = null);
+                  }),
                 ],
               ),
           ],
@@ -217,27 +216,27 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 36),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 38),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(50),
-          color: Colors.green.shade600,
+          color: const Color(0xFF2E7D32),
           boxShadow: [
             BoxShadow(
-              color: Colors.green.withOpacity(0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: const Color(0xFF2E7D32).withOpacity(0.30),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.white, size: 26),
+            Icon(icon, color: Colors.white, size: 24),
             const SizedBox(width: 10),
             Text(
               text,
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -253,7 +252,7 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 32),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(50),
           border: Border.all(color: const Color(0xFF2E7D32), width: 2),
@@ -261,12 +260,12 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: const Color(0xFF2E7D32), size: 24),
+            Icon(icon, color: const Color(0xFF2E7D32), size: 22),
             const SizedBox(width: 10),
             Text(
               text,
               style: const TextStyle(
-                fontSize: 17,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF2E7D32),
               ),

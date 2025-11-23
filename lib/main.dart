@@ -1,11 +1,11 @@
 import 'package:eco_humboldt_go/screens/main_navigation_screen.dart';
+import 'package:intl/date_symbol_data_local.dart'; // 👈 IMPORTANTE
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'screens/auth/login_screen.dart';
-import 'screens/main/home_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -14,6 +14,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+    await initializeDateFormatting('es_ES', null); // 👈 AQUÍ
+
 
   runApp(const EcoHumboldtGO());
 }

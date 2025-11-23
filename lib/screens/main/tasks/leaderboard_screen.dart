@@ -1,7 +1,7 @@
 import 'package:eco_humboldt_go/models/user_model.dart';
 import 'package:eco_humboldt_go/services/user_service.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -25,39 +25,33 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     myPosition = await userService.getUserPosition(uid);
     myUser = await userService.getUserById(uid);
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isMobile = size.width < 600;
+    final bool isMobile = size.width < 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F4),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: const Color(0xFF2E7D32),
-        centerTitle: true,
-        title: const Text(
-          "Ranking de Exploradores",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: 1.2,
-          ),
-        ),
-      ),
-
+      backgroundColor: const Color(0xFFF3F5ED),
       body: StreamBuilder<List<AppUser>>(
         stream: userService.getTop10(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        builder: (_, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
           final users = snapshot.data!;
-          if (users.isEmpty) return const Center(child: Text("Sin jugadores aún"));
+          if (users.isEmpty) {
+            return const Center(
+              child: Text(
+                "Aún no hay exploradores 🌱",
+                style: TextStyle(fontSize: 16, color: Colors.black54),
+              ),
+            );
+          }
 
-          // 3 primeros para la tarima
           final first = users.length > 0 ? users[0] : null;
           final second = users.length > 1 ? users[1] : null;
           final third = users.length > 2 ? users[2] : null;
@@ -66,81 +60,47 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
 
-                // ---------------------------------------------------------
-                // PODIUM KAHOOT
-                // ---------------------------------------------------------
-                SizedBox(
-                  height: isMobile ? 280 : 350,
-                  child: Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [
-                      // Tarima
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _podiumBase(height: 90, color: Colors.grey.shade400),
-                          const SizedBox(width: 20),
-                          _podiumBase(height: 130, color: Colors.amber.shade400),
-                          const SizedBox(width: 20),
-                          _podiumBase(height: 70, color: Colors.brown.shade300),
-                        ],
-                      ),
-
-                      // AVATAR 2
-                      if (second != null)
-                        Positioned(
-                          left: size.width * 0.18,
-                          bottom: 110,
-                          child: _podiumPlayer(
-                            user: second,
-                            position: 2,
-                            size: isMobile ? 85 : 110,
-                            medal: "🥈",
-                          ),
-                        ),
-
-                      // AVATAR 1
-                      if (first != null)
-                        Positioned(
-                          bottom: 140,
-                          child: _podiumPlayer(
-                            user: first,
-                            position: 1,
-                            size: isMobile ? 105 : 130,
-                            medal: "🥇",
-                          ),
-                        ),
-
-                      // AVATAR 3
-                      if (third != null)
-                        Positioned(
-                          right: size.width * 0.18,
-                          bottom: 100,
-                          child: _podiumPlayer(
-                            user: third,
-                            position: 3,
-                            size: isMobile ? 80 : 100,
-                            medal: "🥉",
-                          ),
-                        ),
-                    ],
+                Text(
+                  "Ranking global",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.green.shade800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Top exploradores que aportan al planeta",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // ---------------------------------------------------------
-                // LISTA NORMAL (DEL 4 EN ADELANTE)
-                // ---------------------------------------------------------
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: users.length > 3 ? users.length - 3 : 0,
-                    itemBuilder: (_, i) {
-                      final user = users[i + 3];
-                      return _rankingTile(
+                // ---------- PODIO TOP 3 (SIN OVERFLOW) ----------
+                _podiumRow(
+                  first: first,
+                  second: second,
+                  third: third,
+                  isMobile: isMobile,
+                ),
+
+                const SizedBox(height: 26),
+                Divider(color: Colors.grey.shade400),
+                const SizedBox(height: 14),
+
+                // ---------- LISTA DEL 4 AL 10 ----------
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: users.length > 3 ? users.length - 3 : 0,
+                  itemBuilder: (_, i) {
+                    final user = users[i + 3];
+                    return _rankingTile(
                       position: i + 4,
                       user: user,
                       highlight: false,
@@ -148,24 +108,23 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   },
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 26),
 
-                // ---------------------------------------------------------
-                // MI POSICIÓN
-                // ---------------------------------------------------------
+                // ---------- MI POSICIÓN ----------
                 if (myUser != null)
                   Column(
                     children: [
-                      const Divider(),
+                      Divider(color: Colors.grey.shade400),
+                      const SizedBox(height: 10),
                       const Text(
-                        "Tu posición",
+                        "Tu posición actual",
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 22,
-                          color: Color(0xFF2E7D32),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF2E4631),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       _rankingTile(
                         position: myPosition,
                         user: myUser!,
@@ -181,39 +140,77 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     );
   }
 
-  // ---------------------------------------------------------
-  // TARIMA
-  // ---------------------------------------------------------
-  Widget _podiumBase({required double height, required Color color}) {
-    return Container(
-      width: 80,
-      height: height,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
-      ),
+  // ---------------------------------------------------------------------------
+  // PODIO TOP 3
+  // ---------------------------------------------------------------------------
+  Widget _podiumRow({
+    required AppUser? first,
+    required AppUser? second,
+    required AppUser? third,
+    required bool isMobile,
+  }) {
+    if (first == null && second == null && third == null) {
+      return const SizedBox();
+    }
+
+    final double avatar1 = isMobile ? 86 : 110;
+    final double avatar2 = isMobile ? 74 : 92;
+    final double avatar3 = isMobile ? 70 : 86;
+
+    final double base1 = isMobile ? 90 : 110;
+    final double base2 = isMobile ? 70 : 85;
+    final double base3 = isMobile ? 60 : 78;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (second != null)
+          _podiumColumn(
+            user: second,
+            medal: "🥈",
+            avatarSize: avatar2,
+            baseHeight: base2,
+            color: Colors.grey.shade400,
+          ),
+        if (second != null) const SizedBox(width: 18),
+        if (first != null)
+          _podiumColumn(
+            user: first,
+            medal: "🥇",
+            avatarSize: avatar1,
+            baseHeight: base1,
+            color: Colors.amber.shade400,
+          ),
+        if (third != null) const SizedBox(width: 18),
+        if (third != null)
+          _podiumColumn(
+            user: third,
+            medal: "🥉",
+            avatarSize: avatar3,
+            baseHeight: base3,
+            color: Colors.brown.shade300,
+          ),
+      ],
     );
   }
 
-  // ---------------------------------------------------------
-  // JUGADOR ARRIBA DE LA TARIMA
-  // ---------------------------------------------------------
-  Widget _podiumPlayer({
+  Widget _podiumColumn({
     required AppUser user,
-    required int position,
-    required double size,
     required String medal,
+    required double avatarSize,
+    required double baseHeight,
+    required Color color,
   }) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          medal,
-          style: const TextStyle(fontSize: 40),
-        ),
+        Text(medal, style: const TextStyle(fontSize: 32)),
         const SizedBox(height: 4),
+
         Container(
-          width: size,
-          height: size,
+          width: avatarSize,
+          height: avatarSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: const LinearGradient(
@@ -221,49 +218,73 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                blurRadius: 12,
+                color: Colors.black.withOpacity(0.18),
+                blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(3),
+            padding: const EdgeInsets.all(4),
             child: CircleAvatar(
               backgroundColor: Colors.white,
               backgroundImage: user.avatarUrl.isNotEmpty
                   ? NetworkImage(user.avatarUrl)
                   : null,
               child: user.avatarUrl.isEmpty
-                  ? const Icon(Icons.person, color: Colors.green, size: 40)
+                  ? const Icon(Icons.person,
+                      size: 40, color: Color(0xFF2E7D32))
                   : null,
             ),
           ),
         ),
+
         const SizedBox(height: 6),
-        Text(
-          user.fullName,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-            color: Color(0xFF1B5E20),
+
+        SizedBox(
+          width: 110,
+          child: Text(
+            user.fullName,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1B5E20),
+            ),
           ),
         ),
         Text(
           "${user.points} pts",
           style: TextStyle(
-            color: Colors.grey.shade700,
             fontSize: 13,
+            color: Colors.grey.shade700,
+          ),
+        ),
+
+        const SizedBox(height: 10),
+
+        Container(
+          width: 75,
+          height: baseHeight,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  // ---------------------------------------------------------
-  // TILE NORMAL
-  // ---------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // ITEM DEL RANKING
+  // ---------------------------------------------------------------------------
   Widget _rankingTile({
     required int position,
     required AppUser user,
@@ -276,6 +297,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       decoration: BoxDecoration(
         color: highlight ? Colors.green.shade100 : Colors.white,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: highlight ? Colors.green : Colors.transparent,
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black12,
@@ -283,10 +308,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             offset: const Offset(0, 3),
           ),
         ],
-        border: Border.all(
-          color: highlight ? Colors.green : Colors.transparent,
-          width: 2,
-        ),
       ),
       child: Row(
         children: [
@@ -303,8 +324,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           CircleAvatar(
             radius: 24,
             backgroundColor: Colors.green.shade600,
-            backgroundImage:
-                user.avatarUrl.isNotEmpty ? NetworkImage(user.avatarUrl) : null,
+            backgroundImage: user.avatarUrl.isNotEmpty
+                ? NetworkImage(user.avatarUrl)
+                : null,
             child: user.avatarUrl.isEmpty
                 ? const Icon(Icons.person, color: Colors.white)
                 : null,

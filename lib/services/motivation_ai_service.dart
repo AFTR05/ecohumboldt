@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class MotivationAIService {
-  static final String _apiKey = "AIzaSyBgecK_54kNgnTlMZUfc3afi8_Ttly4GBM";
+  static final String _apiKey = "AIzaSyAk4OVB2SmoJBo4REK2BfRKoYSJ8MHlAxQ";
 
   /// Cache para evitar hacer múltiples peticiones por usuario
   static final Map<String, String> _cachedPhrases = {};
@@ -48,8 +48,6 @@ class MotivationAIService {
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(payload),
       );
-
-      print("RAW RESPONSE: ${response.body}");
 
       final data = jsonDecode(response.body);
 

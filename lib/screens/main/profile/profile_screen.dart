@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eco_humboldt_go/models/user_model.dart';
 import 'package:eco_humboldt_go/screens/auth/login_screen.dart';
+import 'package:eco_humboldt_go/screens/main/profile/edit_profile_screen.dart';
+import 'package:eco_humboldt_go/screens/main/tasks/points_history_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -12,20 +14,11 @@ class ProfileScreen extends StatelessWidget {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7F3),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF2E7D32),
-        centerTitle: true,
-        elevation: 0,
-        title: const Text(
-          "Mi Perfil",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
+      backgroundColor: const Color(0xFFF3F5ED),
 
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection("users").doc(uid).snapshots(),
-        builder: (context, snap) {
+        builder: (_, snap) {
           if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -34,91 +27,16 @@ class ProfileScreen extends StatelessWidget {
           final user = AppUser.fromMap(uid, data);
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-
-                // FOTO Y NOMBRE
-                CircleAvatar(
-                  radius: 55,
-                  backgroundColor: Colors.green.shade200,
-                  backgroundImage: user.avatarUrl.isNotEmpty
-                      ? NetworkImage(user.avatarUrl)
-                      : null,
-                  child: user.avatarUrl.isEmpty
-                      ? const Icon(Icons.person, size: 55, color: Colors.white)
-                      : null,
-                ),
-
-                const SizedBox(height: 14),
-
-                Text(
-                  user.fullName,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
-                  ),
-                ),
-
-                Text(
-                  user.email,
-                  style: const TextStyle(color: Colors.grey, fontSize: 14),
-                ),
-
+                _header(user),
+                const SizedBox(height: 20),
+                _statsSection(user),
                 const SizedBox(height: 25),
-
-                // INFORMACIÓN PERSONAL
-                _sectionTitle("Datos Personales"),
-
-                _infoTile("Nombre", user.fullName, Icons.person),
-                _infoTile("Documento", "${user.idType} - ${user.idNumber}", Icons.badge),
-                _infoTile("Facultad", user.faculty, Icons.school),
-
+                _infoSection(user),
                 const SizedBox(height: 25),
-
-                // INFORMACIÓN DE PROGRESO
-                _sectionTitle("Mi Progreso"),
-
-                _infoTile("Puntos", "${user.points} pts", Icons.star),
-                _infoTile("Gramos ahorrados", "${user.gramsSaved} g", Icons.eco),
-                _infoTile("Racha", "${user.streak} días", Icons.local_fire_department),
-
-                const SizedBox(height: 30),
-
-                // BOTÓN EDITAR PERFIL
-                _primaryButton(
-                  icon: Icons.edit,
-                  text: "Editar información personal",
-                  color: Colors.green.shade700,
-                  onTap: () => _openEditProfile(context, user),
-                ),
-
-                const SizedBox(height: 14),
-
-                // BOTÓN CAMBIAR CONTRASEÑA
-                _primaryButton(
-                  icon: Icons.lock,
-                  text: "Cambiar contraseña",
-                  color: Colors.teal.shade600,
-                  onTap: () => _changePassword(context, user.email),
-                ),
-
-                const SizedBox(height: 14),
-
-                // BOTÓN CERRAR SESIÓN
-                _primaryButton(
-                  icon: Icons.logout,
-                  text: "Cerrar sesión",
-                  color: Colors.red.shade400,
-                  onTap: () async {
-                    await FirebaseAuth.instance.signOut();
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
-                  },
-                ),
+                _actionsSection(context, user),
+                const SizedBox(height: 50),
               ],
             ),
           );
@@ -127,19 +45,167 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ───────────────────────────────────────────────
-  //   WIDGETS REUTILIZABLES
-  // ───────────────────────────────────────────────
+  // ----------------------------------------------------------
+  // HEADER — Mejorado sin overflow
+  // ----------------------------------------------------------
+  Widget _header(AppUser user) {
+    return Stack(
+      children: [
+        Container(
+          height: 210,
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+          ),
+        ),
 
-  Widget _sectionTitle(String title) {
+        Positioned.fill(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Colors.white, Colors.white70],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.18),
+                      blurRadius: 16,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 55,
+                  backgroundColor: Colors.green.shade100,
+                  backgroundImage: user.avatarUrl.isNotEmpty
+                      ? NetworkImage(user.avatarUrl)
+                      : null,
+                  child: user.avatarUrl.isEmpty
+                      ? const Icon(Icons.person, size: 58, color: Colors.green)
+                      : null,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+              Text(
+                user.fullName,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                user.email,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ----------------------------------------------------------
+  // STATS
+  // ----------------------------------------------------------
+  Widget _statsSection(AppUser user) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(child: _statCard("Puntos", "${user.points}", Icons.star, const Color(0xFF2E7D32))),
+          const SizedBox(width: 12),
+          Expanded(child: _statCard("Racha", "${user.streak} días", Icons.local_fire_department, Colors.orange)),
+          const SizedBox(width: 12),
+          Expanded(child: _statCard("Gramos", "${user.gramsSaved} g", Icons.eco, Colors.teal)),
+        ],
+      ),
+    );
+  }
+
+  Widget _statCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.10),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 30),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // INFO
+  // ----------------------------------------------------------
+  Widget _infoSection(AppUser user) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          _sectionTitle("Información Personal"),
+          _infoTile("Nombre", user.fullName, Icons.person),
+          _infoTile("Documento", "${user.idType} - ${user.idNumber}", Icons.badge),
+          _infoTile("Facultad", user.faculty, Icons.school),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String text) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF2E7D32),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF1B5E20),
+          ),
         ),
       ),
     );
@@ -147,25 +213,31 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _infoTile(String label, String value, IconData icon) {
     return Container(
-      margin: const EdgeInsets.only(top: 10),
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
+            color: Colors.green.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
         ],
       ),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF2E7D32)),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(fontSize: 16)),
-          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2E7D32).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: const Color(0xFF2E7D32), size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 16))),
           Text(
             value,
             style: const TextStyle(
@@ -179,156 +251,184 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _primaryButton({
-    required IconData icon,
-    required String text,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        icon: Icon(icon, color: Colors.white, size: 22),
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        label: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ───────────────────────────────────────────────
-  //   FUNCIONES: EDITAR PERFIL
-  // ───────────────────────────────────────────────
-
-  void _openEditProfile(BuildContext context, AppUser user) {
-    final nameCtrl = TextEditingController(text: user.fullName);
-    final idCtrl = TextEditingController(text: user.idNumber);
-
-    String idType = user.idType;
-    String faculty = user.faculty;
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text("Editar información"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: "Nombre completo"),
+  // ----------------------------------------------------------
+  // ACTIONS
+  // ----------------------------------------------------------
+  Widget _actionsSection(BuildContext context, AppUser user) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          _actionButton(
+              icon: Icons.history,
+              text: "Historial de puntos",
+              color: Colors.teal,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PointsHistoryScreen(),
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: idCtrl,
-              decoration: const InputDecoration(labelText: "Número de documento"),
-            ),
-            const SizedBox(height: 10),
-
-            DropdownButtonFormField(
-              value: idType,
-              items: const [
-                DropdownMenuItem(value: "Cédula de Ciudadanía", child: Text("Cédula de Ciudadanía")),
-                DropdownMenuItem(value: "Tarjeta de Identidad", child: Text("Tarjeta de Identidad")),
-                DropdownMenuItem(value: "Pasaporte", child: Text("Pasaporte")),
-              ],
-              decoration: const InputDecoration(labelText: "Tipo de documento"),
-              onChanged: (v) => idType = v as String,
-            ),
-
-
-            const SizedBox(height: 10),
-
-            DropdownButtonFormField(
-              value: faculty,
-              items: const [
-                DropdownMenuItem(value: "Ingenierías", child: Text("Ingenierías")),
-                DropdownMenuItem(value: "Medicina", child: Text("Medicina")),
-                DropdownMenuItem(value: "Ciencias Básicas", child: Text("Ciencias Básicas")),
-                DropdownMenuItem(value: "Derecho", child: Text("Derecho")),
-                DropdownMenuItem(value: "Veterinaria", child: Text("Veterinaria")),
-                DropdownMenuItem(value: "Psicología", child: Text("Psicología")),
-              ],
-              decoration: const InputDecoration(labelText: "Facultad"),
-              onChanged: (v) => faculty = v as String,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            child: const Text("Cancelar"),
-            onPressed: () => Navigator.pop(context),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E7D32),
-            ),
-            onPressed: () {
-              FirebaseFirestore.instance.collection("users").doc(user.uid).update({
-                "fullName": nameCtrl.text.trim(),
-                "idNumber": idCtrl.text.trim(),
-                "idType": idType,
-                "faculty": faculty,
-              });
-              Navigator.pop(context);
+          _actionButton(
+            icon: Icons.edit,
+            text: "Editar información personal",
+            color: Colors.green,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => EditProfileScreen(user: user)),
+              );
             },
-            child: const Text("Guardar"),
+          ),
+
+          _actionButton(
+            icon: Icons.lock,
+            text: "Cambiar contraseña",
+            color: Colors.teal,
+            onTap: () => _changePassword(context),
+          ),
+
+          _actionButton(
+            icon: Icons.logout,
+            text: "Cerrar sesión",
+            color: Colors.red,
+            onTap: () async {
+              await FirebaseAuth.instance.signOut();
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  // ───────────────────────────────────────────────
-  //   CAMBIAR CONTRASEÑA
-  // ───────────────────────────────────────────────
+  Widget _actionButton({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.07),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
+          border: Border.all(color: color.withOpacity(0.5), width: 1.2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
 
-  void _changePassword(BuildContext context, String email) {
+  // ----------------------------------------------------------
+  // MODAL CAMBIO DE CONTRASEÑA — NUEVO DISEÑO
+  // ----------------------------------------------------------
+  void _changePassword(BuildContext context) {
     final ctrl = TextEditingController();
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text("Cambiar contraseña"),
-        content: TextField(
-          controller: ctrl,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: "Nueva contraseña"),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.teal.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.lock, color: Colors.teal, size: 26),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              "Cambiar contraseña",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
+
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ctrl,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: "Nueva contraseña",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+
         actions: [
           TextButton(
-            child: const Text("Cancelar"),
             onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar"),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
             onPressed: () async {
               try {
                 await FirebaseAuth.instance.currentUser!.updatePassword(ctrl.text.trim());
 
+                Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text("Contraseña actualizada"),
+                    content: Text("Contraseña actualizada correctamente ✓"),
                     backgroundColor: Colors.green,
                   ),
                 );
-
-                Navigator.pop(context);
               } catch (e) {
+                Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text("Error: $e"),
@@ -337,9 +437,8 @@ class ProfileScreen extends StatelessWidget {
                 );
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E7D32)),
             child: const Text("Actualizar"),
-          ),
+          )
         ],
       ),
     );

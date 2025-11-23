@@ -1,14 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eco_humboldt_go/models/user_model.dart';
-import 'package:eco_humboldt_go/screens/auth/login_screen.dart';
-import 'package:eco_humboldt_go/screens/main/tasks/daily_task_screen.dart';
-import 'package:eco_humboldt_go/screens/main/tasks/leaderboard_screen.dart';
-import 'package:eco_humboldt_go/screens/main/tasks/points_history_screen.dart';
-import 'package:eco_humboldt_go/screens/rewards_screen.dart';
-import 'package:eco_humboldt_go/services/auth_service.dart';
+import 'package:eco_humboldt_go/services/motivation_ai_service.dart';
+import 'package:eco_humboldt_go/services/motivation_cache_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,191 +14,163 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final uid = FirebaseAuth.instance.currentUser!.uid;
+  final String uid = FirebaseAuth.instance.currentUser!.uid;
+
+  String? motivationMessage;
+  bool generatingMessage = false;
+
+  bool _initializedMotivation = false; // 👈 evita miles de llamadas
+  final MotivationCacheService cache = MotivationCacheService();
+
+  // ---------------- STREAMS ---------------- //
 
   Stream<AppUser?> _getUserStream() {
     return FirebaseFirestore.instance
         .collection("users")
         .doc(uid)
         .snapshots()
-        .map((snap) => snap.exists ? AppUser.fromMap(snap.id, snap.data()!) : null);
+        .map((snap) =>
+            snap.exists ? AppUser.fromMap(snap.id, snap.data()!) : null);
   }
 
-  Stream<int> _getDailyProgressStream() {
-    final today = DateTime.now();
-    final dateId = "${today.year}-${today.month}-${today.day}";
-    final tasksStream = FirebaseFirestore.instance.collection("daily_tasks").snapshots();
+  Stream<int> _getProgress() {
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-    return tasksStream.asyncMap((totalSnap) async {
-      final total = totalSnap.docs.length;
+    return FirebaseFirestore.instance
+        .collection("daily_tasks")
+        .snapshots()
+        .asyncMap((snap) async {
+      final total = snap.docs.length;
+
       final completedSnap = await FirebaseFirestore.instance
           .collection("users")
           .doc(uid)
           .collection("completed_tasks")
           .get();
 
-      final completedToday =
-          completedSnap.docs.where((d) => d.id.contains(dateId)).length;
+      final doneToday =
+          completedSnap.docs.where((d) => d.id.contains(todayStr)).length;
 
       if (total == 0) return 0;
-      return ((completedToday / total) * 100).round();
+      return ((doneToday / total) * 100).round();
     });
   }
 
+  // ---------------- MOTIVACIÓN IA ---------------- //
+
+  Future<void> _loadOrGenerateMessage(AppUser user) async {
+    // Si ya existe en RAM
+    if (motivationMessage != null) return;
+
+    // Buscar caché local
+    final cached = await cache.getMessage();
+    if (cached != null) {
+      setState(() => motivationMessage = cached);
+      return;
+    }
+
+    // No existe → generar
+    setState(() => generatingMessage = true);
+
+    final newMessage = await MotivationAIService()
+        .generateMotivation(program: user.faculty, uid: user.uid);
+
+    await cache.saveMessage(newMessage);
+
+    setState(() {
+      generatingMessage = false;
+      motivationMessage = newMessage;
+    });
+  }
+
+  // ---------------- BUILD ---------------- //
+
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final size = MediaQuery.of(context).size;
-    final bool isMobile = size.width < 600;
-
-    double cardPadding = isMobile ? 18 : 24;
-    double cardRadius = isMobile ? 18 : 22;
-    double cardSpacing = isMobile ? 18 : 26;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F4),
-
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2E7D32),
         elevation: 0,
+        backgroundColor: const Color(0xFF2E7D32),
+        centerTitle: true,
         title: const Text(
           "Eco-Humboldt GO",
           style: TextStyle(
-            fontWeight: FontWeight.bold,
             color: Colors.white,
+            fontWeight: FontWeight.bold,
             letterSpacing: 0.8,
           ),
         ),
-        centerTitle: true,
       ),
-
       body: StreamBuilder<AppUser?>(
         stream: _getUserStream(),
-        builder: (context, snap) {
+        builder: (_, snap) {
           if (!snap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
           final user = snap.data!;
 
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 18 : 30,
-                  vertical: 26,
+          // 🔥 LLAMAR SOLO UNA VEZ
+          if (!_initializedMotivation) {
+            _initializedMotivation = true;
+            _loadOrGenerateMessage(user);
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                const SizedBox(height: 15),
+
+                // ------------------ MOTIVACIÓN ------------------
+                if (generatingMessage)
+                  Column(
+                    children: const [
+                      CircularProgressIndicator(color: Colors.green),
+                      SizedBox(height: 10),
+                      Text("Generando tu frase personalizada..."),
+                    ],
+                  )
+                else if (motivationMessage != null)
+                  _motivationCard(motivationMessage!),
+
+                const SizedBox(height: 20),
+
+                // ------------------ PUNTOS ------------------
+                _statCard(
+                  title: "Puntos totales",
+                  value: "${user.points} 🌿",
+                  icon: Icons.stars,
                 ),
-                child: Column(
-                  children: [
-                    Image.asset(
-                      "assets/images/logo.png",
-                      height: isMobile ? 90 : 120,
-                    ),
 
-                    const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-                    // ---------------------- PUNTOS -----------------------
-                    _pointsCard(
-                      points: user.points,
-                      padding: cardPadding,
-                      radius: cardRadius,
-                    ),
-
-                    SizedBox(height: cardSpacing),
-
-                    // ---------------------- PROGRESO ---------------------
-                    StreamBuilder<int>(
-                      stream: _getDailyProgressStream(),
-                      builder: (c, progSnap) {
-                        final progress = progSnap.data ?? 0;
-                        return _progressCard(
-                          progress: progress,
-                          padding: cardPadding,
-                          radius: cardRadius,
-                        );
-                      },
-                    ),
-
-                    SizedBox(height: cardSpacing + 10),
-
-                    // ------------------ MENÚ RESPONSIVO -------------------
-                    LayoutBuilder(
-                      builder: (_, constraints) {
-                        int columns = constraints.maxWidth < 500 ? 2 : 4;
-
-                        return GridView.count(
-                          shrinkWrap: true,
-                          crossAxisCount: columns,
-                          crossAxisSpacing: 18,
-                          mainAxisSpacing: 18,
-                          childAspectRatio: 1,
-                          physics: const NeverScrollableScrollPhysics(),
-                          children: [
-                            _menuCard(
-                              icon: Icons.history,
-                              label: "Historial",
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const PointsHistoryScreen()),
-                              ),
-                            ),
-                            _menuCard(
-                              icon: Icons.leaderboard,
-                              label: "Ranking",
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
-                              ),
-                            ),
-                            _menuCard(
-                              icon: Icons.card_giftcard,
-                              label: "Recompensas",
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const RewardsScreen()),
-                              ),
-                            ),
-                            _menuCard(
-                              icon: Icons.eco,
-                              label: "Retos",
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const DailyTasksScreen()),
-                              ),
-                            ),
-                            _menuCard(
-                              icon: Icons.logout,
-                              label: "Salir",
-                              onTap: () async {
-                                await authService.signOut();
-                                if (!mounted) return;
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                                  (_) => false,
-                                );
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    const Text(
-                      "🌿 Cada pequeño gesto ayuda a salvar el planeta 🌎",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFF2E7D32),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                // ------------------ PROGRESO ------------------
+                StreamBuilder<int>(
+                  stream: _getProgress(),
+                  builder: (_, pSnap) {
+                    final progress = pSnap.data ?? 0;
+                    return _progressCard(progress);
+                  },
                 ),
-              ),
+
+                const SizedBox(height: 20),
+
+                // ------------------ GRAMOS AHORRADOS ------------------
+                _statCard(
+                  title: "Gramos ahorrados",
+                  value: "${user.gramsSaved} g ♻️",
+                  icon: Icons.energy_savings_leaf_rounded,
+                ),
+
+                const SizedBox(height: 20),
+
+                // ------------------ RACHA ------------------
+                _streakCard(user.streak),
+
+                const SizedBox(height: 40),
+              ],
             ),
           );
         },
@@ -210,65 +178,90 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ============================= CARD PUNTOS =============================
+  // ------------------------------------------------------------
+  // TARJETAS VISUALES
+  // ------------------------------------------------------------
 
-  Widget _pointsCard({
-    required int points,
-    required double padding,
-    required double radius,
+  Widget _motivationCard(String message) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2E7D32),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _statCard({
+    required String title,
+    required String value,
+    required IconData icon,
   }) {
     return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(padding),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
             color: Colors.green.withOpacity(0.12),
             blurRadius: 14,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          const Text(
-            "Puntos totales",
-            style: TextStyle(fontSize: 16, color: Colors.black54),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            "$points 🌿",
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.bold,
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: const BoxDecoration(
               color: Color(0xFF2E7D32),
+              shape: BoxShape.circle,
             ),
+            child: Icon(icon, color: Colors.white, size: 28),
           ),
+          const SizedBox(width: 18),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(fontSize: 15, color: Colors.black54)),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E7D32),
+                ),
+              ),
+            ],
+          )
         ],
       ),
     );
   }
 
-  // ============================= CARD PROGRESO =============================
-
-  Widget _progressCard({
-    required int progress,
-    required double padding,
-    required double radius,
-  }) {
+  Widget _progressCard(int progress) {
     return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(padding),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(radius),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
             color: Colors.green.withOpacity(0.12),
             blurRadius: 14,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -277,71 +270,78 @@ class _HomeScreenState extends State<HomeScreen> {
           const Text(
             "Progreso diario",
             style: TextStyle(
-              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Color(0xFF2E7D32),
+              fontSize: 16,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
               value: progress / 100,
+              minHeight: 12,
               backgroundColor: Colors.grey.shade300,
-              minHeight: 10,
               color: const Color(0xFF2E7D32),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             "$progress% completado",
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.black54),
           ),
         ],
       ),
     );
   }
 
-  // ============================= MENU CARD =============================
-
-  Widget _menuCard({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.green.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+  Widget _streakCard(int streak) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: const BoxDecoration(
+              color: Colors.deepOrange,
+              shape: BoxShape.circle,
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 42, color: const Color(0xFF2E7D32)),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2E7D32),
+            child: const Icon(
+              Icons.local_fire_department,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 18),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Racha activa",
+                style: TextStyle(fontSize: 15, color: Colors.black54),
               ),
-            ),
-          ],
-        ),
+              Text(
+                "$streak días",
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepOrange,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

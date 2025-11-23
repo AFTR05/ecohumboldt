@@ -7,37 +7,44 @@ class AuthService with ChangeNotifier {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   // REGISTRO
- Future<User?> registerUser(
+  Future<User?> registerUser(
     String email,
     String password,
     String fullName,
-    String idNumber,
-  ) async {
-  try {
-    final cred = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    String idNumber, {
+    required String idType,
+    required String faculty,
+  }) async {
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    final user = cred.user;
-    if (user == null) return null;
+      final user = cred.user;
+      if (user == null) return null;
 
-    await _db.collection("users").doc(user.uid).set({
-      "email": email,
-      "fullName": fullName,
-      "idNumber": idNumber,
-      "points": 0,
-      "avatarUrl": "",
-      "createdAt": DateTime.now().toIso8601String(),
-    });
+      await _db.collection("users").doc(user.uid).set({
+        "uid": user.uid,
+        "email": email,
+        "fullName": fullName,
+        "idNumber": idNumber,
+        "idType": idType,
+        "faculty": faculty,
+        "points": 0,
+        "avatarUrl": "",
+        "gramsSaved": 0,
+        "streak": 0,
+        "lastTaskDate": "",
+        "createdAt": DateTime.now().toIso8601String(),
+      });
 
-    return user;
-  } catch (e) {
-    print("ERROR en registerUser(): $e");
-    rethrow;
+      return user;
+    } catch (e) {
+      print("ERROR en registerUser(): $e");
+      rethrow;
+    }
   }
-}
-
 
   // LOGIN
   Future<User?> signIn(String email, String password) async {
@@ -58,9 +65,9 @@ class AuthService with ChangeNotifier {
     await _auth.signOut();
   }
 
-  // USUARIO ACTUAL (instantáneo)
+  // USUARIO ACTUAL
   User? get currentUser => _auth.currentUser;
 
-  // 🔥 STREAM DE AUTH (para StreamProvider)
+  // STREAM AUTH
   Stream<User?> get userChanges => _auth.authStateChanges();
 }

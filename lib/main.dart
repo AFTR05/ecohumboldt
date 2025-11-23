@@ -1,3 +1,4 @@
+import 'package:eco_humboldt_go/screens/main_navigation_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -53,7 +54,7 @@ class AuthWrapper extends StatelessWidget {
     final user = context.watch<User?>();
 
     if (user != null) {
-      return const HomeScreen();
+      return const MainNavigation();
     } else {
       return const LoginScreen();
     }

@@ -1,3 +1,4 @@
+import 'package:eco_humboldt_go/screens/main_navigation_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
@@ -15,12 +16,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _idController = TextEditingController();
 
+  String? _selectedIdType;
+  String? _selectedFaculty;
+
   bool _isLoading = false;
 
   bool _isValidInstitutionalEmail(String email) {
     return email.endsWith('@cue.edu.co') ||
         email.endsWith('@unihumboldt.edu.co');
   }
+
+  final List<String> idTypes = [
+    "Cédula de Ciudadanía",
+    "Tarjeta de Identidad",
+    "Pasaporte",
+    "Cédula de Extranjería",
+    "Otro",
+  ];
+
+  final List<String> faculties = [
+    "Administración de Empresas",
+    "Administrativo",
+    "Derecho",
+    "Docente",
+    "Enfermería"
+    "Ingeniería Industrial",
+    "Ingeniería de Software",
+    "Ingeniería Civil",
+    "Marketing Digital & comunicación estratégica",
+    "Medicina",
+    "Medicina Veterinaria y zootecnia",
+    "Psicología",
+    "Tecnología en gestión del turismo cultural y de la naturaleza",
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // NOMBRE
+                      // ---------------------- NOMBRE ----------------------
                       TextField(
                         controller: _nameController,
                         decoration: InputDecoration(
@@ -77,7 +105,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: 15),
 
-                      // IDENTIFICACIÓN
+                      // ------------------- TIPO DE DOCUMENTO -------------------
+                      DropdownButtonFormField<String>(
+                        value: _selectedIdType,
+                        decoration: InputDecoration(
+                          labelText: "Tipo de identificación",
+                          prefixIcon:
+                              const Icon(Icons.credit_card, color: Colors.green),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: idTypes
+                            .map((type) =>
+                                DropdownMenuItem(value: type, child: Text(type)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _selectedIdType = v),
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      // ---------------------- NÚMERO ID ----------------------
                       TextField(
                         controller: _idController,
                         decoration: InputDecoration(
@@ -91,7 +138,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: 15),
 
-                      // EMAIL
+                      // ---------------------- FACULTAD ----------------------
+                      DropdownButtonFormField<String>(
+                        value: _selectedFaculty,
+                        decoration: InputDecoration(
+                          labelText: "Programa",
+                          prefixIcon:
+                              const Icon(Icons.school, color: Colors.green),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: faculties
+                            .map((f) =>
+                                DropdownMenuItem(value: f, child: Text(f)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _selectedFaculty = v),
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      // ---------------------- EMAIL ----------------------
                       TextField(
                         controller: _emailController,
                         decoration: InputDecoration(
@@ -105,7 +171,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: 15),
 
-                      // PASSWORD
+                      // ---------------------- PASSWORD ----------------------
                       TextField(
                         controller: _passwordController,
                         obscureText: true,
@@ -120,7 +186,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: 25),
 
-                      // BOTÓN REGISTRO
+                      // ---------------------- BOTÓN ----------------------
                       _isLoading
                           ? const CircularProgressIndicator()
                           : ElevatedButton.icon(
@@ -134,45 +200,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               onPressed: () async {
                                 final email = _emailController.text.trim();
+                                final password =
+                                    _passwordController.text.trim();
+                                final name = _nameController.text.trim();
+                                final id = _idController.text.trim();
 
-                                // VALIDAR EMAIL INSTITUCIONAL
-                                if (!_isValidInstitutionalEmail(email)) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Correo inválido. Debe ser @cue.edu.co o @unihumboldt.edu.co'),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                  return;
+                                // ================= VALIDACIONES =================
+
+                                if (name.isEmpty) {
+                                  return _alert("El nombre es obligatorio.");
                                 }
+
+                                if (_selectedIdType == null) {
+                                  return _alert("Selecciona un tipo de documento.");
+                                }
+
+                                if (id.isEmpty) {
+                                  return _alert("El número de identificación es obligatorio.");
+                                }
+
+                                if (_selectedFaculty == null) {
+                                  return _alert("Selecciona tu facultad.");
+                                }
+
+                                if (!_isValidInstitutionalEmail(email)) {
+                                  return _alert(
+                                      "El correo debe ser @cue.edu.co o @unihumboldt.edu.co");
+                                }
+
+                                if (password.length < 6) {
+                                  return _alert("La contraseña debe tener al menos 6 caracteres.");
+                                }
+
+                                // =================================================
 
                                 setState(() => _isLoading = true);
 
                                 try {
                                   await authService.registerUser(
                                     email,
-                                    _passwordController.text.trim(),
-                                    _nameController.text.trim(),
-                                    _idController.text.trim(),
+                                    password,
+                                    name,
+                                    id,
+                                    idType: _selectedIdType!,
+                                    faculty: _selectedFaculty!,
                                   );
 
                                   if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Usuario registrado con éxito 🎉'),
-                                        backgroundColor: Colors.green,
-                                      ),
+                                    _alert("Usuario registrado con éxito 🎉",
+                                        success: true);
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const MainNavigation()),
                                     );
-                                    Navigator.pop(context);
+
                                   }
                                 } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Error: $e'),
-                                      backgroundColor: Colors.redAccent,
-                                    ),
-                                  );
+                                  _alert("Error: $e");
                                 }
 
                                 setState(() => _isLoading = false);
@@ -186,6 +270,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // Snackbar bonito
+  void _alert(String msg, {bool success = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: success ? Colors.green : Colors.redAccent,
       ),
     );
   }

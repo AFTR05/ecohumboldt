@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class ImageAIValidator {
-  static const String _apiKey = "APIKEY_GOES_HERE";
+  static const String _apiKey = "AIzaSyBgecK_54kNgnTlMZUfc3afi8_Ttly4GBM";
 
   Future<bool> validateImageFlexible({
     required Uint8List imageBytes,

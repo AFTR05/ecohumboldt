@@ -3,11 +3,8 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class ImageAIValidator {
-  // 🔥 Coloca tu API KEY AQUÍ y NO en la vista
-  static const String _apiKey = "AIzaSyCa954r8TM5znaJHTho_JWpPGhdIQB7PxI";
+  static const String _apiKey = "APIKEY_GOES_HERE";
 
-  /// Validación IA flexible:
-  /// Acepta objetos similares, parciales, borrosos o parcialmente visibles.
   Future<bool> validateImageFlexible({
     required Uint8List imageBytes,
     required String expectedLabel, // Ej: "botella", "bicicleta"

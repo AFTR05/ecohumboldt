@@ -1,5 +1,8 @@
+import 'dart:typed_data' show Uint8List;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:eco_humboldt_go/screens/camera/camera_validation_screen.dart';
+import 'package:eco_humboldt_go/services/image_ai_validator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../models/daily_task.dart';
@@ -16,7 +19,9 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
   final uid = FirebaseAuth.instance.currentUser!.uid;
   final taskService = TaskService();
 
-  // Stream que escucha cambios INMEDIATOS
+  Uint8List? lastCapturedBytes;
+
+  // ---- STREAM: Completed today ----
   Stream<List<String>> getCompletedTodayStream() {
     final today = DateTime.now();
     final dateId = "${today.year}-${today.month}-${today.day}";
@@ -30,15 +35,76 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
             snap.docs.map((e) => e.id.replaceAll("_$dateId", "")).toList());
   }
 
+  // ---- Show Loading Dialog ----
+  void _showLoading(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+      ),
+    );
+  }
+
+  void _hideLoading(BuildContext context) {
+    Navigator.of(context, rootNavigator: true).pop();
+  }
+
+  // ---- Nice SweetAlert-like dialog ----
+  Future<void> _showResultDialog(
+    BuildContext context, {
+    required bool success,
+    String? message,
+  }) async {
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            Icon(
+              success ? Icons.check_circle : Icons.error,
+              color: success ? Colors.green : Colors.red,
+            ),
+            const SizedBox(width: 10),
+            Text(success ? "Validación correcta" : "Validación fallida"),
+          ],
+        ),
+        content: Text(
+          message ??
+              (success
+                  ? "La imagen coincide con el reto 🎉"
+                  : "La foto no contiene el objeto esperado para este reto."),
+          style: const TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Aceptar"),
+            onPressed: () => Navigator.pop(context),
+          )
+        ],
+      ),
+    );
+  }
+
+  // ---- CAMERA VALIDATION WEB ----
   Future<bool> _validateWithWebcam(BuildContext context) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const WebcamCaptureWeb()),
     );
-    return result == true;
+
+    if (result != null && result is Uint8List) {
+      lastCapturedBytes = result;
+      return true;
+    }
+    return false;
   }
 
-  Future<bool> _validateWithMobile() async => true;
+  // ---- MOBILE version (mock for now) ----
+  Future<bool> _validateWithMobile() async {
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,8 +163,7 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
     );
   }
 
-  // ========================= CARD =============================
-
+  // ---- Task Card ----
   Widget _taskCard(DailyTask task, bool isCompleted, bool isMobile) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -128,7 +193,6 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
                 ),
                 const SizedBox(width: 12),
 
-                // FIX del error debugSize == size
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,8 +243,7 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
     );
   }
 
-  // ============================= BUTTON =============================
-
+  // ---- Validate Button ----
   Widget _validateButton(DailyTask task, bool isCompleted) {
     return SizedBox(
       width: double.infinity,
@@ -189,34 +252,56 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
             ? null
             : () async {
                 final isWeb = identical(0, 0.0);
-                final valid = isWeb
+
+                // --- 1. Open Camera ---
+                final validImage = isWeb
                     ? await _validateWithWebcam(context)
                     : await _validateWithMobile();
 
-                if (!valid) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("No se tomó ninguna foto.")),
-                  );
+                if (!validImage || lastCapturedBytes == null) {
+                  _showResultDialog(context,
+                      success: false, message: "No se tomó ninguna foto.");
                   return;
                 }
 
-                final ok =
-                    await taskService.completeTask(uid: uid, task: task);
+                // --- 2. Loading IA ---
+                _showLoading(context);
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(ok
-                        ? "¡Reto completado! 🌿"
-                        : "Ya completaste este reto hoy"),
-                    backgroundColor: ok ? Colors.green : Colors.orange,
-                  ),
+                // --- 3. Validate IA ---
+                final aiResult =
+                    await ImageAIValidator().validateImageFlexible(
+                  imageBytes: lastCapturedBytes!,
+                  expectedLabel:
+                      task.expectedObject ?? task.title.toLowerCase(),
+                );
+
+                // --- 4. Hide Loader ---
+                _hideLoading(context);
+
+                // --- 5. Result ---
+                if (!aiResult) {
+                  _showResultDialog(context,
+                      success: false,
+                      message:
+                          "La foto no coincide con lo solicitado para este reto.");
+                  return;
+                }
+
+                // --- 6. Complete Task ---
+                final ok = await taskService.completeTask(uid: uid, task: task);
+
+                _showResultDialog(
+                  context,
+                  success: ok,
+                  message: ok
+                      ? "¡Reto completado correctamente! 🎉"
+                      : "Ya completaste este reto hoy.",
                 );
               },
         style: ElevatedButton.styleFrom(
-          backgroundColor: isCompleted ? Colors.grey.shade400 : const Color(0xFF2E7D32),
+          backgroundColor:
+              isCompleted ? Colors.grey.shade400 : const Color(0xFF2E7D32),
           foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.grey.shade400,
-          disabledForegroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -233,8 +318,7 @@ class _DailyTasksScreenState extends State<DailyTasksScreen> {
     );
   }
 
-  // ============================= BADGE =============================
-
+  // ---- Badge ----
   Widget _badge(IconData icon, String text, Color c1, Color c2) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

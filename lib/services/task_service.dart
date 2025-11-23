@@ -14,6 +14,7 @@ class TaskService {
         description: "Lleva tus botellas y envolturas a la caneca adecuada.",
         points: 20,
         grams: 150, // 150 g de contaminación evitada
+        expectedObject: "botella reutilizable",
       ),
       DailyTask(
         id: "usar_bicicleta",
@@ -21,13 +22,7 @@ class TaskService {
         description: "Muévete en bicicleta mínimo 1 km en lugar de vehículo.",
         points: 30,
         grams: 400, // 400 g de CO₂ evitados
-      ),
-      DailyTask(
-        id: "apagar_luces",
-        title: "Ahorrar energía",
-        description: "Apaga las luces y dispositivos que no estés usando.",
-        points: 10,
-        grams: 50,
+        expectedObject: "bicicleta",
       ),
       DailyTask(
         id: "reutilizar_bolsa",
@@ -35,6 +30,7 @@ class TaskService {
         description: "Usa bolsas reutilizables en lugar de bolsas plásticas.",
         points: 15,
         grams: 75,
+        expectedObject: "bolsa de tela",
       ),
       DailyTask(
         id: "llevar_termo",
@@ -42,6 +38,7 @@ class TaskService {
         description: "Lleva tu propio termo y evita botellas plásticas.",
         points: 25,
         grams: 100,
+        expectedObject: "termo",
       ),
     ];
 

@@ -3,7 +3,9 @@ class DailyTask {
   final String title;
   final String description;
   final int points;
-  final double grams; // 🔥 nuevo campo
+  final double grams;
+  final String expectedObject; 
+  // 👆 Objeto que la IA debe detectar: “botella”, “bicicleta”, “bolsa de tela”, etc.
 
   DailyTask({
     required this.id,
@@ -11,6 +13,7 @@ class DailyTask {
     required this.description,
     required this.points,
     required this.grams,
+    required this.expectedObject,
   });
 
   factory DailyTask.fromMap(String id, Map<String, dynamic> data) {
@@ -20,6 +23,7 @@ class DailyTask {
       description: data['description'] ?? '',
       points: data['points'] ?? 0,
       grams: (data['grams'] ?? 0).toDouble(),
+      expectedObject: data['expectedObject'] ?? '', 
     );
   }
 
@@ -29,6 +33,7 @@ class DailyTask {
       'description': description,
       'points': points,
       'grams': grams,
+      'expectedObject': expectedObject,
     };
   }
 }

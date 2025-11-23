@@ -12,21 +12,36 @@ class WebcamCaptureWeb extends StatefulWidget {
 
 class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
   CameraController? _controller;
+  List<CameraDescription> _cameras = [];
   Uint8List? _imageBytes;
   bool _isInitialized = false;
+  int _currentCameraIndex = 0; // 🔥 aquí guardamos cuál cámara está activa
 
   @override
   void initState() {
     super.initState();
-    _initCamera();
+    _loadCameras();
   }
 
-  Future<void> _initCamera() async {
+  Future<void> _loadCameras() async {
     try {
-      final cameras = await availableCameras();
+      _cameras = await availableCameras();
 
+      if (_cameras.isEmpty) {
+        debugPrint("No se encontraron cámaras");
+        return;
+      }
+
+      await _initCamera(_currentCameraIndex);
+    } catch (e) {
+      debugPrint("ERROR AL CARGAR CÁMARAS: $e");
+    }
+  }
+
+  Future<void> _initCamera(int index) async {
+    try {
       _controller = CameraController(
-        cameras.first,
+        _cameras[index],
         ResolutionPreset.high,
         enableAudio: false,
       );
@@ -35,10 +50,27 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
 
       if (!mounted) return;
 
-      setState(() => _isInitialized = true);
+      setState(() {
+        _isInitialized = true;
+        _currentCameraIndex = index;
+        _imageBytes = null; // Reiniciar foto si cambia de cámara
+      });
     } catch (e) {
       debugPrint("ERROR AL INICIAR CÁMARA: $e");
     }
+  }
+
+  // 🔄 Cambiar cámara
+  Future<void> _switchCamera() async {
+    if (_cameras.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Solo hay una cámara disponible.")),
+      );
+      return;
+    }
+
+    final nextIndex = (_currentCameraIndex + 1) % _cameras.length;
+    await _initCamera(nextIndex);
   }
 
   Future<void> _takePicture() async {
@@ -71,8 +103,17 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             letterSpacing: 1,
+            color: Colors.white,
           ),
         ),
+        actions: [
+          // 🔁 BOTÓN PARA CAMBIAR CÁMARA
+          IconButton(
+            icon: const Icon(Icons.cameraswitch_rounded, size: 30),
+            onPressed: _switchCamera,
+          ),
+          const SizedBox(width: 10),
+        ],
       ),
 
       body: Center(
@@ -89,7 +130,8 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
                   width: 5,
-                  color: isCaptured ? Colors.green.shade600 : Colors.green.shade300,
+                  color:
+                      isCaptured ? Colors.green.shade600 : Colors.green.shade300,
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -107,7 +149,8 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
                       ? Image.memory(_imageBytes!, fit: BoxFit.cover)
                       : Stack(
                           children: [
-                            Positioned.fill(child: CameraPreview(_controller!)),
+                            Positioned.fill(
+                                child: CameraPreview(_controller!)),
                             Positioned.fill(
                               child: Container(
                                 decoration: BoxDecoration(
@@ -128,7 +171,6 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
 
             const SizedBox(height: 28),
 
-            // Status text
             AnimatedOpacity(
               duration: const Duration(milliseconds: 300),
               opacity: 1,
@@ -146,19 +188,20 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
 
             const SizedBox(height: 30),
 
-            // BUTTONS
             if (!isCaptured)
-              _beautifulCaptureButton(onTap: _takePicture)
+              _buttonPrimary("Tomar foto", Icons.camera_alt_rounded, _takePicture)
             else
               Column(
                 children: [
-                  _beautifulValidateButton(
-                    onTap: () => Navigator.pop(context, true),
-                  ),
+                  _buttonPrimary(
+                      "Validar reto ✓", Icons.check_circle, () {
+                        Navigator.pop(context, _imageBytes);
+                      }),
                   const SizedBox(height: 14),
-                  _beautifulRetryButton(
-                    onTap: () => setState(() => _imageBytes = null),
-                  ),
+                  _buttonSecondary(
+                      "Reintentar", Icons.refresh_rounded, () {
+                        setState(() => _imageBytes = null);
+                      }),
                 ],
               ),
           ],
@@ -167,58 +210,10 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // BUTTON: TAKE PICTURE (PREMIUM)
-  // ---------------------------------------------------------------------
-  Widget _beautifulCaptureButton({required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 36),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(50),
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF2E7D32),
-              Color(0xFF43A047),
-              Color(0xFF66BB6A),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.green.withOpacity(0.45),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.camera_alt_rounded, color: Colors.white, size: 26),
-            SizedBox(width: 10),
-            Text(
-              "Tomar foto",
-              style: TextStyle(
-                fontSize: 18,
-                letterSpacing: 0.7,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ---------------- BUTTONS ----------------
 
-  // ---------------------------------------------------------------------
-  // BUTTON: VALIDATE
-  // ---------------------------------------------------------------------
-  Widget _beautifulValidateButton({required VoidCallback onTap}) {
+  Widget _buttonPrimary(
+      String text, IconData icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -231,20 +226,18 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
               color: Colors.green.withOpacity(0.35),
               blurRadius: 20,
               offset: const Offset(0, 8),
-            )
+            ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.check_circle_outline_rounded,
-                color: Colors.white, size: 26),
-            SizedBox(width: 10),
+          children: [
+            Icon(icon, color: Colors.white, size: 26),
+            const SizedBox(width: 10),
             Text(
-              "Validar reto ✓",
-              style: TextStyle(
+              text,
+              style: const TextStyle(
                 fontSize: 18,
-                letterSpacing: 0.7,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -255,10 +248,8 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // BUTTON: RETRY
-  // ---------------------------------------------------------------------
-  Widget _beautifulRetryButton({required VoidCallback onTap}) {
+  Widget _buttonSecondary(
+      String text, IconData icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -269,12 +260,12 @@ class _WebcamCaptureWebState extends State<WebcamCaptureWeb> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.refresh_rounded, color: Color(0xFF2E7D32), size: 24),
-            SizedBox(width: 10),
+          children: [
+            Icon(icon, color: const Color(0xFF2E7D32), size: 24),
+            const SizedBox(width: 10),
             Text(
-              "Reintentar",
-              style: TextStyle(
+              text,
+              style: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF2E7D32),

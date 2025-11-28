@@ -39,7 +39,7 @@ class EcoHumboldtGO extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'Eco-Humboldt GO',
+        title: 'Eco Humboldt GO',
         theme: ThemeData(primarySwatch: Colors.green),
         debugShowCheckedModeBanner: false,
         home: const AuthWrapper(),

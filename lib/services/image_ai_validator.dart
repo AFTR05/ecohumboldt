@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class ImageAIValidator {
-  static const String _apiKey = "AIzaSyAk4OVB2SmoJBo4REK2BfRKoYSJ8MHlAxQ";
+  static const String _apiKey = String.fromEnvironment("GEMINI_API_KEY");
 
   Future<bool> validateImageFlexible({
     required Uint8List imageBytes,

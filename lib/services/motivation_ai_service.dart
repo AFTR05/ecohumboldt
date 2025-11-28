@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class MotivationAIService {
-  static final String _apiKey = "AIzaSyAk4OVB2SmoJBo4REK2BfRKoYSJ8MHlAxQ";
+  static final String _apiKey = String.fromEnvironment("GEMINI_API_KEY");
 
   /// Cache para evitar hacer múltiples peticiones por usuario
   static final Map<String, String> _cachedPhrases = {};

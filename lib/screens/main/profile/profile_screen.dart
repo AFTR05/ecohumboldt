@@ -46,7 +46,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // ----------------------------------------------------------
-  // HEADER — Mejorado sin overflow
+  // HEADER
   // ----------------------------------------------------------
   Widget _header(AppUser user) {
     return Stack(
@@ -96,6 +96,7 @@ class ProfileScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 12),
+
               Text(
                 user.fullName,
                 style: const TextStyle(
@@ -104,7 +105,9 @@ class ProfileScreen extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
+
               const SizedBox(height: 4),
+
               Text(
                 user.email,
                 style: const TextStyle(
@@ -112,6 +115,7 @@ class ProfileScreen extends StatelessWidget {
                   color: Colors.white70,
                 ),
               ),
+
               const SizedBox(height: 20),
             ],
           ),
@@ -178,7 +182,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // ----------------------------------------------------------
-  // INFO
+  // INFO — FACULTY RESPONSIVE
   // ----------------------------------------------------------
   Widget _infoSection(AppUser user) {
     return Padding(
@@ -187,8 +191,8 @@ class ProfileScreen extends StatelessWidget {
         children: [
           _sectionTitle("Información Personal"),
           _infoTile("Nombre", user.fullName, Icons.person),
-          _infoTile("Documento", "${user.idType} - ${user.idNumber}", Icons.badge),
-          _infoTile("Facultad", user.faculty, Icons.school),
+          _infoTile("Documento", "${user.idNumber}", Icons.badge),
+          _infoTile("Facultad", user.faculty, Icons.school), // ← tiene responsive
         ],
       ),
     );
@@ -236,14 +240,28 @@ class ProfileScreen extends StatelessWidget {
             ),
             child: Icon(icon, color: const Color(0xFF2E7D32), size: 22),
           ),
+
           const SizedBox(width: 14),
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 16))),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2E7D32),
+
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+
+          // ------------- RESPONSIVE FACULTY (Y TODOS LOS VALORES) -------------
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2E7D32),
+              ),
             ),
           ),
         ],
@@ -260,18 +278,17 @@ class ProfileScreen extends StatelessWidget {
       child: Column(
         children: [
           _actionButton(
-              icon: Icons.history,
-              text: "Historial de puntos",
-              color: Colors.teal,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const PointsHistoryScreen(),
-                  ),
-                );
-              },
-            ),
+            icon: Icons.history,
+            text: "Historial de puntos",
+            color: Colors.teal,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PointsHistoryScreen()),
+              );
+            },
+          ),
+
           _actionButton(
             icon: Icons.edit,
             text: "Editar información personal",
@@ -341,7 +358,9 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 22),
             ),
+
             const SizedBox(width: 16),
+
             Expanded(
               child: Text(
                 text,
@@ -352,6 +371,7 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
             ),
+
             const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
           ],
         ),
@@ -360,7 +380,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // ----------------------------------------------------------
-  // MODAL CAMBIO DE CONTRASEÑA — NUEVO DISEÑO
+  // CHANGE PASSWORD MODAL
   // ----------------------------------------------------------
   void _changePassword(BuildContext context) {
     final ctrl = TextEditingController();
@@ -370,7 +390,6 @@ class ProfileScreen extends StatelessWidget {
       builder: (_) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
 
         title: Row(
           children: [
@@ -390,20 +409,15 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
 
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: ctrl,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: "Nueva contraseña",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: "Nueva contraseña",
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-          ],
+          ),
         ),
 
         actions: [
@@ -411,6 +425,7 @@ class ProfileScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
             child: const Text("Cancelar"),
           ),
+
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.teal,
@@ -421,6 +436,7 @@ class ProfileScreen extends StatelessWidget {
                 await FirebaseAuth.instance.currentUser!.updatePassword(ctrl.text.trim());
 
                 Navigator.pop(context);
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text("Contraseña actualizada correctamente ✓"),
@@ -429,6 +445,7 @@ class ProfileScreen extends StatelessWidget {
                 );
               } catch (e) {
                 Navigator.pop(context);
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text("Error: $e"),
@@ -438,7 +455,7 @@ class ProfileScreen extends StatelessWidget {
               }
             },
             child: const Text("Actualizar"),
-          )
+          ),
         ],
       ),
     );
